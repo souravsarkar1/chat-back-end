@@ -171,18 +171,7 @@ export const userLogin = async (req: Request, res: Response) => {
 };
 
 
-export const getAllUser = async (req: Request, res: Response) => {
-    try {
-        const { userId } = req.body;
 
-        const users = await UserModel.find({ _id: { $ne: userId } }).select('-password');
-
-        return res.status(200).json({ success: true, users });
-    } catch (error) {
-        console.error("Error in getting users:", error);
-        return res.status(500).json({ success: false, message: "Something went wrong" });
-    }
-};
 
 
 export const getAllFriends = async (req: Request, res: Response) => {
@@ -236,6 +225,24 @@ export const getAllFriends = async (req: Request, res: Response) => {
     }
 }
 
+export const getAllNotFriends = async (req: Request, res: Response) => {
+    try {
+        const { userId } = req.body;
+        const notFriends = await UserModel.find({
+            _id: { $ne: userId },
+            friends: { $not: { $elemMatch: { friendId: userId } } },
+            notifications: { $not: { $elemMatch: { from: userId, type: 'friend_request' } } }
+        }).select('-password');
+
+        return res.status(200).json({ success: true, notFriends });
+    } catch (error) {
+        console.error("Error in getting not friends:", error);
+        return res.status(500).json({ success: false, message: "Something went wrong" });
+    }
+}
+
+
+
 export const addNewFriend = async (req: Request, res: Response) => {
     try {
         const { userId, friendId } = req.body;
@@ -283,5 +290,205 @@ export const addNewFriend = async (req: Request, res: Response) => {
     } catch (error) {
         console.error("Error in adding friend:", error);
         return res.status(500).json({ success: false, message: "Something went wrong" });
+    }
+}
+
+
+export const updateUserOnlineOffline = async (req: Request, res: Response) => {
+    try {
+        const { userId, userStatus } = req.body;
+
+        if (!userId || !userStatus) {
+            return res.status(400).json({ message: "Something went to wrong", success: false });
+        }
+        const user = await UserModel.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: "User not found", success: false });
+        }
+
+        user["isOnline"] = userStatus;
+        await user.save();
+
+        return res.status(200).json({ message: "User status updated successfully", success: true });
+    } catch (error) {
+        console.error("Error in updating user status:", error);
+        return res.status(500).json({ message: "Something went wrong", success: false });
+    }
+}
+
+
+
+
+export const userFriendRequest = async (req: Request, res: Response) => {
+    try {
+        const { userId, friendId } = req.body;
+        if (!userId || !friendId) {
+            return res.status(400).json({ message: "Something went to wrong", success: false });
+        }
+        const user = await UserModel.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: "User not found", success: false });
+        }
+        const friend = await UserModel.findById(friendId);
+        if (!friend) {
+            return res.status(404).json({ message: "Friend not found", success: false });
+        }
+        friend.notifications.push({ type: "friend_request", from: userId, createdAt: new Date() });
+        await friend.save();
+
+        return res.status(200).json({ message: "Friend request sent successfully", success: true });
+    } catch (error) {
+        console.error("Error in sending friend request:", error);
+        return res.status(500).json({ message: "Something went wrong", success: false });
+    }
+}
+
+export const getMySelf = async (req: Request, res: Response) => {
+    try {
+        const { userId } = req.body;
+        if (!userId) {
+            return res.status(400).json({ message: "Something went to wrong", success: false });
+        }
+        const user = await UserModel.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: "User not found", success: false });
+        }
+
+        return res.status(200).json({ message: "User found successfully", success: true, data: user });
+    } catch (error) {
+        console.error("Error in getting my self:", error);
+        return res.status(500).json({ message: "Something went wrong", success: false });
+    }
+
+}
+
+
+export const getUserById = async (req: Request, res: Response) => {
+    try {
+        const { userToBeFindId } = req.body;
+        if (!userToBeFindId) {
+            return res.status(400).json({ message: "Something went to wrong", success: false });
+        }
+        const user = await UserModel.findById(userToBeFindId).select('-password');
+        if (!user) {
+            return res.status(404).json({ message: "User not found", success: false });
+        }
+
+        return res.status(200).json({ message: "User found successfully", success: true, data: user });
+    } catch (error) {
+        console.error("Error in getting user by ID:", error);
+        return res.status(500).json({ message: "Something went wrong", success: false });
+    }
+}
+
+
+export const findFreiendRequesFriendDetails = async (req: Request, res: Response) => {
+    try {
+        const { userId } = req.body;
+        if (!userId) {
+            return res.status(400).json({ message: "Something went to wrong", success: false });
+        }
+        const user = await UserModel.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: "User not found", success: false });
+        }
+
+        const friendRequests = user.notifications.filter((notification: any) => notification.type === "friend_request");
+
+        console.log(friendRequests);
+        if (friendRequests.length === 0) {
+            return res.status(200).json({ message: "No friend requests found", success: true, data: [] });
+        }
+
+        const friendRequestsDetails = await Promise.all(friendRequests.map(async (notification: any) => {
+            const friend: any = await UserModel.findById(notification.from).select('username profilePic fullName email status');
+            return {
+                _id: friend._id,
+                username: friend.username,
+                profilePic: friend.profilePic,
+                fullName: friend.fullName,
+                email: friend.email,
+                status: friend.status
+            }
+        }))
+
+        console.log(friendRequestsDetails);
+        return res.status(200).json({ message: "User found successfully", success: true, data: friendRequestsDetails });
+    } catch (error) {
+        console.error("Error in finding friend request details:", error);
+        return res.status(500).json({ message: "Something went wrong", success: false });
+    }
+}
+
+
+export const acceptFriendRequest = async (req: Request, res: Response) => {
+    try {
+        const { userId, friendId } = req.body;
+        if (!userId || !friendId) {
+            return res.status(400).json({ message: "Something went to wrong", success: false });
+        }
+        const user: any = await UserModel.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: "User not found", success: false });
+        }
+        const friend: any = await UserModel.findById(friendId);
+        if (!friend) {
+            return res.status(404).json({ message: "Friend not found", success: false });
+        }
+        friend.notifications = friend.notifications.filter((notification: any) => notification.from.toString() !== userId.toString());
+        await friend.save();
+        user.notifications = user.notifications.filter((notification: any) => notification.from.toString() !== friendId.toString());
+        await user.save();
+        return res.status(200).json({ message: "Friend request accepted successfully", success: true });
+    } catch (error) {
+        console.error("Error in accepting friend request:", error);
+        return res.status(500).json({ message: "Something went wrong", success: false });
+    }
+}
+
+export const getAllSenedFriendRequest = async (req: Request, res: Response) => {
+    try {
+        const { userId } = req.body;
+        if (!userId) {
+            return res.status(400).json({ message: "Something went to wrong", success: false });
+        }
+        const user: any = await UserModel.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: "User not found", success: false });
+        }
+        const sentFriendRequests = await UserModel.find({ "notifications.from": userId, "notifications.type": "friend_request" }, { password: 0 });
+
+        console.log(sentFriendRequests);
+        return res.status(200).json({ message: "User found successfully", success: true, data: sentFriendRequests });
+    } catch (error) {
+        console.error("Error in getting all sent friend request:", error);
+        return res.status(500).json({ message: "Something went wrong", success: false });
+    }
+}
+
+
+
+export const cancelFcriendRequest = async (req: Request, res: Response) => {
+    try {
+        const { userId, friendId } = req.body;
+        if (!userId || !friendId) {
+            return res.status(400).json({ message: "Something went to wrong", success: false });
+        }
+        const user: any = await UserModel.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: "User not found", success: false });
+        }
+        const friend: any = await UserModel.findById(friendId);
+        if (!friend) {
+            return res.status(404).json({ message: "Friend not found", success: false });
+        }
+        friend.notifications = friend.notifications.filter((notification: any) => notification.from.toString() !== userId.toString());
+        await friend.save();
+        user.notifications = user.notifications.filter((notification: any) => notification.from.toString() !== friendId.toString());
+        await user.save();
+        return res.status(200).json({ message: "Friend request cancelled successfully", success: true });
+    } catch (error) {
+        console.error("Error in cancelling friend request:", error);
+        return res.status(500).json({ message: "Something went wrong", success: false });
     }
 }
