@@ -492,3 +492,15 @@ export const cancelFcriendRequest = async (req: Request, res: Response) => {
         return res.status(500).json({ message: "Something went wrong", success: false });
     }
 }
+
+
+
+export const allAllUserOffline = async (req: Request, res: Response) => {
+    try {
+        const users = await UserModel.updateMany({}, { isOnline: false });
+        return res.status(200).json({ message: "All users updated to offline successfully", success: true });
+    } catch (error) {
+        console.error("Error in updating all users to offline:", error);
+        return res.status(500).json({ message: "Something went wrong", success: false });
+    }
+}

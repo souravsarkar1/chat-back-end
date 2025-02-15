@@ -7,6 +7,8 @@ import http from "http";
 import { Server } from "socket.io";
 import conversationRouter from "./conversation/conversationRouter";
 import messageRouter from "./message/messageRouter";
+import UserModel from "./user/userSchema";
+
 
 const app = express();
 
@@ -27,37 +29,89 @@ const io = new Server(httpServer, {
 io.on("connection", (socket) => {
     console.log("A user connected");
 
+    // Extract userId from the handshake query (assuming you pass it during connection)
+    const userId = socket.handshake.query.userId;
+
+    // Update user's online status when they connect
+    UserModel.findByIdAndUpdate(userId, { isOnline: true, socketId: socket.id })
+        .then((user) => {
+            if (user) {
+                console.log(`User ${userId} is now online`);
+
+                // Notify friends about the status change
+                user.friends.forEach((friend: any) => {
+                    io.to(friend.friendId.socketId).emit("user_status_change", {
+                        userId: user._id,
+                        isOnline: true,
+                    });
+                });
+            }
+        })
+        .catch((err) => {
+            console.error("Error updating user status:", err);
+        });
+
     // Handle user joining a conversation
     socket.on("join_conversation", (conversationId: string) => {
         socket.join(conversationId);
-        console.log(`User joined conversation: ${conversationId}`);
+        console.log(`User ${userId} joined conversation: ${conversationId}`);
     });
 
     // Handle new messages
-    socket.on("send_message", (data: { conversationId: string, message: any }) => {
-        // Broadcast the message to all users in the conversation except sender
+    socket.on("send_message", (data: { conversationId: string; message: any }) => {
+        // Broadcast the message to all users in the conversation except the sender
         socket.to(data.conversationId).emit("receive_message", data.message);
+        console.log(`User ${userId} sent a message in conversation ${data.conversationId}`);
     });
 
     // Handle typing status
-    socket.on("typing", (data: { conversationId: string, userId: string }) => {
+    socket.on("typing", (data: { conversationId: string; userId: string }) => {
         socket.to(data.conversationId).emit("user_typing", data.userId);
+        console.log(`User ${data.userId} is typing in conversation ${data.conversationId}`);
     });
 
     // Handle stop typing status
-    socket.on("stop_typing", (data: { conversationId: string, userId: string }) => {
+    socket.on("stop_typing", (data: { conversationId: string; userId: string }) => {
         socket.to(data.conversationId).emit("user_stop_typing", data.userId);
+        console.log(`User ${data.userId} stopped typing in conversation ${data.conversationId}`);
     });
 
     // Handle user leaving a conversation
     socket.on("leave_conversation", (conversationId: string) => {
         socket.leave(conversationId);
-        console.log(`User left conversation: ${conversationId}`);
+        console.log(`User ${userId} left conversation: ${conversationId}`);
     });
 
     // Handle disconnection
-    socket.on("disconnect", () => {
-        console.log("User disconnected");
+    socket.on("disconnect", async () => {
+        console.log(`User ${userId} disconnected`);
+
+        // Update user's online status and last seen time
+        try {
+            const user = await UserModel.findByIdAndUpdate(
+                userId,
+                {
+                    isOnline: false,
+                    lastSeen: Date.now(),
+                    socketId: null, // Clear the socketId
+                },
+                { new: true } // Return the updated document
+            );
+
+            if (user) {
+                console.log(`User ${userId} is now offline`);
+
+                // Notify friends about the status change
+                user.friends.forEach((friend: any) => {
+                    io.to(friend.friendId.socketId).emit("user_status_change", {
+                        userId: user._id,
+                        isOnline: false,
+                    });
+                });
+            }
+        } catch (err) {
+            console.error("Error updating user status on disconnect:", err);
+        }
     });
 });
 
