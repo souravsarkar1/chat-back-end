@@ -1,5 +1,5 @@
 import express from "express";
-import { acceptFriendRequest, addNewFriend, allAllUserOffline, cancelFcriendRequest, findFreiendRequesFriendDetails, getAllFriends, getAllNotFriends, getAllSenedFriendRequest, getMySelf, getUserById, updateUserOnlineOffline, userFriendRequest, userLogin, userRegister } from "./userServices";
+import { acceptFriendRequest, addManyUsers, addNewFriend, allAllUserOffline, cancelFcriendRequest, findFreiendRequesFriendDetails, getAllFriends, getAllNotFriends, getAllSenedFriendRequest, getMySelf, getUserById, updateUserOnlineOffline, userFriendRequest, userLogin, userRegister } from "./userServices";
 import { authMiddleware } from "../helpers/authMiddleware";
 const userRouter = express.Router();
 
@@ -18,4 +18,5 @@ userRouter.post("/accept-frined-request", authMiddleware as any, acceptFriendReq
 userRouter.post("/get-all-sened-friend-request-by-me", authMiddleware as any, getAllSenedFriendRequest as any);
 userRouter.post("/cancel-friend-request", authMiddleware as any, cancelFcriendRequest as any);
 userRouter.post("/make-offline", allAllUserOffline as any);
+userRouter.post("/add-many-users", addManyUsers as any);
 export default userRouter;

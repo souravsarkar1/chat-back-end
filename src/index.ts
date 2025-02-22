@@ -31,6 +31,28 @@ io.on("connection", (socket) => {
 
     // Extract userId from the handshake query (assuming you pass it during connection)
     const userId = socket.handshake.query.userId;
+    // Handle WebRTC signaling
+    socket.on("call_user", (data) => {
+        // Forward the call offer to the recipient
+        io.to(data.to).emit("call_offer", {
+            offer: data.offer,
+            from: data.from,
+        });
+    });
+
+    socket.on("call_accepted", (data) => {
+        // Forward the call answer to the caller
+        io.to(data.to).emit("call_answer", {
+            answer: data.answer,
+        });
+    });
+
+    socket.on("ice_candidate", (data) => {
+        // Forward ICE candidates to the other peer
+        io.to(data.to).emit("ice_candidate", {
+            candidate: data.candidate,
+        });
+    });
 
     // Update user's online status when they connect
     UserModel.findByIdAndUpdate(userId, { isOnline: true, socketId: socket.id })

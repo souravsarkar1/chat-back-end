@@ -504,3 +504,21 @@ export const allAllUserOffline = async (req: Request, res: Response) => {
         return res.status(500).json({ message: "Something went wrong", success: false });
     }
 }
+
+
+export const addManyUsers = async (req: Request, res: Response) => {
+    try {
+        const { users } = req.body;
+        if (!users || users.length === 0) {
+            return res.status(400).json({ message: "Users are required", success: false });
+        }
+        if (users.length > 20) {
+            return res.status(400).json({ message: "You can add up to 20 users at a time", success: false });
+        }
+        const createdUsers = await UserModel.insertMany(users);
+        return res.status(201).json({ message: "Users added successfully", success: true, data: createdUsers });
+    } catch (error) {
+        console.error("Error in adding many users:", error);
+        return res.status(500).json({ message: "Something went wrong", success: false });
+    }
+}
