@@ -105,6 +105,8 @@ export const getChatRooms = async (req: Request, res: Response) => {
         // Find all conversations where the user is a participant
         const chatRooms = await ConversationModel.find({ participants: userId });
 
+        console.log(chatRooms);
+
         return res.status(200).json({
             success: true,
             message: "Chat rooms retrieved successfully",
@@ -205,6 +207,62 @@ export const addNewMessage = async (req: Request, res: Response) => {
 
     } catch (error) {
         console.error("Error in adding new message:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Something went wrong"
+        });
+    }
+}
+
+
+export const getConversationFriend = async (req: Request, res: Response) => {
+    try {
+        const { userId, conversationId } = req.body;
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: "User Id is required"
+            });
+        }
+        if (!conversationId) {
+            return res.status(400).json({
+                success: false,
+                message: "Conversation Id is required"
+            });
+        }
+        const conversation = await ConversationModel.findById(conversationId);
+        if (!conversation) {
+            return res.status(404).json({
+                success: false,
+                message: "Conversation not found"
+            });
+        }
+        if (conversation.isGroup) {
+            const friends = conversation.participants.filter(id => id.toString() !== userId);
+            const friend = await UserModel.find({ _id: { $in: friends } });
+            return res.status(400).json({
+                success: false,
+                message: "This is a group chat",
+                data: friend
+            });
+        } else {
+            const friendId = conversation.participants.filter(id => id.toString() !== userId)[0].toString();
+            const friend = await UserModel.findById(friendId);
+            if (!friend) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Friend not found"
+                });
+            }
+            return res.status(200).json({
+                success: true,
+                message: "Conversation friend retrieved successfully",
+                data: friend
+            });
+        }
+
+    } catch (error) {
+        console.error("Error in getting conversation friend:", error);
         return res.status(500).json({
             success: false,
             message: "Something went wrong"
