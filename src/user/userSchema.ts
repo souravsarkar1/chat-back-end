@@ -69,7 +69,8 @@ const userSchema = new Schema(
             text: String,
             read: { type: Boolean, default: false },
             createdAt: { type: Date, default: Date.now }
-        }]
+        }],
+        step: { type: Number, default: 0 }
     },
     { timestamps: true }
 );

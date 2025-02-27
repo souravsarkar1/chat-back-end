@@ -412,7 +412,6 @@ export const findFreiendRequesFriendDetails = async (req: Request, res: Response
             }
         }))
 
-        console.log(friendRequestsDetails);
         return res.status(200).json({ message: "User found successfully", success: true, data: friendRequestsDetails });
     } catch (error) {
         console.error("Error in finding friend request details:", error);
@@ -520,5 +519,15 @@ export const addManyUsers = async (req: Request, res: Response) => {
     } catch (error) {
         console.error("Error in adding many users:", error);
         return res.status(500).json({ message: "Something went wrong", success: false });
+    }
+}
+
+
+
+export const updateStep = () => {
+    try {
+
+    } catch (error) {
+
     }
 }
