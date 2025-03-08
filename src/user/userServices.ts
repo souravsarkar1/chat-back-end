@@ -524,10 +524,39 @@ export const addManyUsers = async (req: Request, res: Response) => {
 
 
 
-export const updateStep = () => {
+export const registerMobileView = async (req: Request, res: Response) => {
     try {
+        const { email, password } = req.body;
+        const username = `user-${Math.floor(Math.random() * 1000000)}`;
 
+        // Validate required fields
+        if (!email || !password) {
+            return res.status(400).json({ message: "Email and password are required", success: false });
+        }
+
+        // Check if the email is already registered
+        const existingEmail = await UserModel.findOne({ email });
+        if (existingEmail) {
+            console.log("Email is already registered")
+            return res.status(400).json({ message: "Email is already registered", success: false });
+        }
+
+        // Hash the password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Create new user with default values
+        const user = await UserModel.create({
+            username,
+            email: email.toLowerCase().trim(),
+            password: hashedPassword,
+            step: 1
+        });
+
+        return res.status(201).json({ message: "User created successfully", success: true, data: user });
     } catch (error) {
-
+        console.error("Error in registering mobile view:", error);
+        return res.status(500).json({ message: "Something went wrong", success: false });
     }
 }
+
+

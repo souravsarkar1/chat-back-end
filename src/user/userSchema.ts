@@ -24,7 +24,7 @@ const userSchema = new Schema(
         },
         fullName: {
             type: String,
-            required: true,
+            required: false,
             trim: true
         },
         profilePic: {

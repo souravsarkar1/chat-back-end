@@ -1,9 +1,10 @@
 import express from "express";
-import { acceptFriendRequest, addManyUsers, addNewFriend, allAllUserOffline, cancelFcriendRequest, findFreiendRequesFriendDetails, getAllFriends, getAllNotFriends, getAllSenedFriendRequest, getMySelf, getUserById, updateUserOnlineOffline, userFriendRequest, userLogin, userRegister } from "./userServices";
+import { acceptFriendRequest, addManyUsers, addNewFriend, allAllUserOffline, cancelFcriendRequest, findFreiendRequesFriendDetails, getAllFriends, getAllNotFriends, getAllSenedFriendRequest, getMySelf, getUserById, registerMobileView, updateUserOnlineOffline, userFriendRequest, userLogin, userRegister } from "./userServices";
 import { authMiddleware } from "../helpers/authMiddleware";
 const userRouter = express.Router();
 
 userRouter.post("/register", userRegister as any);
+userRouter.post("/mobile/register", registerMobileView as any)
 userRouter.post("/login", userLogin as any);
 userRouter.post("/get-friend", authMiddleware as any, getAllFriends as any);
 userRouter.post("/get-all-suggested-friends", authMiddleware as any, getAllNotFriends as any);
